@@ -5,6 +5,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    const body = await req.json();
+    const { timestamp, sessionId } = body;
+    
     const { url } = await fetch("https://www.askyourdatabase.com/api/chatbot/v2/session", {
       method: "POST",
       headers: {
@@ -13,8 +16,8 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         chatbotid: process.env.CHATBOT_ID,
-        name: "POS User",
-        email: "pos@example.com",
+        name: `POS User ${sessionId || 'default'}`,
+        email: `pos_${timestamp || Date.now()}@example.com`,
         // Optional: Add databaseConfig here for tenant isolation
       }),
     }).then((res) => res.json());

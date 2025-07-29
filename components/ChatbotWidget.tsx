@@ -7,28 +7,48 @@ export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false);
 
   const fetchAydSession = () => {
+    // Add timestamp to ensure fresh session
+    const timestamp = Date.now();
     fetch("/api/ayd", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({
+        timestamp: timestamp,
+        sessionId: `pos_${timestamp}`,
+      }),
     })
       .then((res) => res.json())
       .then(({ url }) => {
-        setIframeUrl(url);
+        // Add timestamp to URL to ensure fresh session
+        const freshUrl = url.includes('?') ? `${url}&t=${timestamp}` : `${url}?t=${timestamp}`;
+        setIframeUrl(freshUrl);
       })
       .catch((error) => {
         console.error("Error fetching AYD session:", error);
         // Fallback to default URL if API fails
-        setIframeUrl(`https://www.askyourdatabase.com/chatbot/${process.env.NEXT_PUBLIC_CHATBOT_ID || 'demo'}`);
+        const fallbackUrl = `https://www.askyourdatabase.com/chatbot/${process.env.NEXT_PUBLIC_CHATBOT_ID || 'demo'}?t=${timestamp}`;
+        setIframeUrl(fallbackUrl);
       });
   };
 
   useEffect(() => {
-    // Set initial iframe URL
+    // Set initial iframe URL with timestamp to ensure fresh session
     if (typeof window !== "undefined") {
-      setIframeUrl(`https://www.askyourdatabase.com/chatbot/${process.env.NEXT_PUBLIC_CHATBOT_ID || 'demo'}`);
+      const timestamp = Date.now();
+      const initialUrl = `https://www.askyourdatabase.com/chatbot/${process.env.NEXT_PUBLIC_CHATBOT_ID || 'demo'}?t=${timestamp}`;
+      setIframeUrl(initialUrl);
+      
+      // Clear any existing chat data from localStorage
+      if (typeof window !== "undefined") {
+        // Clear any cached chat data
+        Object.keys(localStorage).forEach(key => {
+          if (key.includes('chat') || key.includes('ayd') || key.includes('session')) {
+            localStorage.removeItem(key);
+          }
+        });
+      }
     }
 
     // Listen for messages from the iframe
@@ -53,6 +73,7 @@ export default function ChatbotWidget() {
 
   const toggleChat = () => {
     if (!isOpen) {
+      // Always fetch a fresh session when opening chat
       fetchAydSession();
     }
     setIsOpen(!isOpen);
@@ -82,6 +103,7 @@ export default function ChatbotWidget() {
             </button>
           </div>
           <iframe
+            key={iframeUrl} // Force re-render when URL changes
             src={iframeUrl}
             className="chatbot-iframe"
             style={{ height: 500, width: 400 }}
